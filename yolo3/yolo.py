@@ -16,22 +16,29 @@ from PIL import Image, ImageFont, ImageDraw
 
 from yolo3.model import yolo_eval, yolo_body, tiny_yolo_body
 from yolo3.utils import letterbox_image
-import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 from keras.utils import multi_gpu_model
-gpu_num=1
+
 
 class YOLO(object):
-    def __init__(self):
-        self.model_path = 'model_data/yolo.h5' # model path or trained weights path
-        self.anchors_path = 'model_data/yolo_anchors.txt'
-        self.classes_path = 'model_data/coco_classes.txt'
-        self.score = 0.3
-        self.iou = 0.45
+    def __init__(self,
+                 model_path='model_data/yolo.h5',
+                 anchors_path='model_data/yolo_anchors.txt',
+                 classes_path='model_data/coco_classes.txt',
+                 score_threshold=0.3,
+                 iou=0.45,
+                 image_size=(416, 416),
+                 gpu_num=1):
+        self.model_path = model_path
+        self.anchors_path = anchors_path
+        self.classes_path = classes_path
+        self.score = score_threshold
+        self.iou = iou
         self.class_names = self._get_class()
         self.anchors = self._get_anchors()
+        self.gpu_num = gpu_num
         self.sess = K.get_session()
-        self.model_image_size = (416, 416) # fixed size or (None, None), hw
+        # fixed size or (None, None), hw
+        self.model_image_size = image_size
         self.boxes, self.scores, self.classes = self.generate()
 
     def _get_class(self):
@@ -82,12 +89,34 @@ class YOLO(object):
 
         # Generate output tensor targets for filtered bounding boxes.
         self.input_image_shape = K.placeholder(shape=(2, ))
-        if gpu_num>=2:
+        if self.gpu_num >= 2:
             self.yolo_model = multi_gpu_model(self.yolo_model, gpus=gpu_num)
         boxes, scores, classes = yolo_eval(self.yolo_model.output, self.anchors,
                 len(self.class_names), self.input_image_shape,
                 score_threshold=self.score, iou_threshold=self.iou)
         return boxes, scores, classes
+
+    def predict(self, image):
+        if self.model_image_size != (None, None):
+            assert self.model_image_size[0]%32 == 0, 'Multiples of 32 required'
+            assert self.model_image_size[1]%32 == 0, 'Multiples of 32 required'
+            boxed_image = letterbox_image(image, tuple(reversed(self.model_image_size)))
+        else:
+            new_image_size = (image.width - (image.width % 32),
+                              image.height - (image.height % 32))
+            boxed_image = letterbox_image(image, new_image_size)
+        image_data = np.array(boxed_image, dtype='float32')
+        image_data /= 255.
+        image_data = np.expand_dims(image_data, 0)  # Add batch dimension.
+
+        out_boxes, out_scores, out_classes = self.sess.run(
+            [self.boxes, self.scores, self.classes],
+            feed_dict={
+                self.yolo_model.input: image_data,
+                self.input_image_shape: [image.size[1], image.size[0]],
+                K.learning_phase(): 0
+            })
+        return out_boxes, out_scores, out_classes
 
     def detect_image(self, image):
         start = timer()
@@ -102,7 +131,6 @@ class YOLO(object):
             boxed_image = letterbox_image(image, new_image_size)
         image_data = np.array(boxed_image, dtype='float32')
 
-        print(image_data.shape)
         image_data /= 255.
         image_data = np.expand_dims(image_data, 0)  # Add batch dimension.
 
@@ -214,7 +242,6 @@ def detect_img(yolo):
             r_image = yolo.detect_image(image)
             r_image.show()
     yolo.close_session()
-
 
 
 if __name__ == '__main__':
