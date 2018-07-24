@@ -15,10 +15,10 @@ def read_label_map(filename):
         d[display_name] = name
     return d
 
-def generate(split, label='Beer'):
+def generate(split, *, label='Beer', out='generated_data'):
     df = pd.read_csv('data/annotations/{}.csv'.format(split))
     lm = read_label_map('data/annotations/label_map.pbtxt')
-    df = df[df['LabelName'] == label]
+    df = df[df['LabelName'] == lm[label]]
     lines = []
     for image_id, bbs in df.groupby('ImageID'):
         filename = 'data/images/{}/{}.jpg'.format(split, image_id)
@@ -43,7 +43,7 @@ def generate(split, label='Beer'):
         line = '{} {}'.format(filename, boxes)
         lines.append(line)
     lines = '\n'.join(lines)
-    out = '{}.txt'.format(split)
+    out = '{}/{}.txt'.format(out, split)
     with open(out, 'w') as fd:
         fd.write(lines)
 
