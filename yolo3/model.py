@@ -206,6 +206,8 @@ def yolo_eval(yolo_outputs,
     box_scores = K.concatenate(box_scores, axis=0)
 
     mask = box_scores >= score_threshold
+    if max_boxes is None:
+        max_boxes = boxes.shape[0]
     max_boxes_tensor = K.constant(max_boxes, dtype='int32')
     boxes_ = []
     scores_ = []

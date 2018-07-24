@@ -26,8 +26,10 @@ class YOLO(object):
                  classes_path='model_data/coco_classes.txt',
                  score_threshold=0.3,
                  iou=0.45,
+                 max_boxes=1600,
                  image_size=(416, 416),
                  gpu_num=1):
+        self.max_boxes = max_boxes
         self.model_path = model_path
         self.anchors_path = anchors_path
         self.classes_path = classes_path
@@ -93,7 +95,8 @@ class YOLO(object):
             self.yolo_model = multi_gpu_model(self.yolo_model, gpus=self.gpu_num)
         boxes, scores, classes = yolo_eval(self.yolo_model.output, self.anchors,
                 len(self.class_names), self.input_image_shape,
-                score_threshold=self.score, iou_threshold=self.iou)
+                score_threshold=self.score, iou_threshold=self.iou,
+                max_boxes=self.max_boxes)
         return boxes, scores, classes
     
     def predict_image(self, image):
