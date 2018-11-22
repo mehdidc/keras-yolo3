@@ -39,10 +39,10 @@ def main(
         weights_path = 'model_data/tiny_yolo_weights.h5' if is_tiny_version else 'model_data/yolo_weights.h5'
     else:
         weights_path = init_weights
-    model = create_func(input_shape, anchors, num_classes, freeze_body=2, weights_path=init_weights)
+    model = create_func(input_shape, anchors, num_classes, freeze_body=2, weights_path=weights_path)
     
     logging = TensorBoard(log_dir=log_dir)
-    checkpoint = ModelCheckpoint(log_dir + 'ep{epoch:03d}-loss{loss:.3f}-val_loss{val_loss:.3f}.h5',
+    checkpoint = ModelCheckpoint(log_dir + '/ep{epoch:03d}-loss{loss:.3f}-val_loss{val_loss:.3f}.h5',
         monitor='val_loss', save_weights_only=True, save_best_only=True, period=1)
     reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=3, verbose=1)
     early_stopping = EarlyStopping(monitor='val_loss', min_delta=0, patience=10, verbose=1)
@@ -71,7 +71,7 @@ def main(
                 epochs=nb_warm_epochs,
                 initial_epoch=first_epoch,
                 callbacks=[logging, checkpoint])
-        model.save_weights(log_dir + 'trained_weights_stage_1.h5')
+        model.save_weights(log_dir + '/trained_weights_stage_1.h5')
 
     # Unfreeze and continue training, to fine-tune.
     # Train longer if the result is not good.
@@ -89,7 +89,7 @@ def main(
             epochs=nb_epochs,
             initial_epoch=first_epoch + nb_warm_epochs,
             callbacks=[logging, checkpoint, reduce_lr, early_stopping])
-        model.save_weights(log_dir + 'trained_weights_final.h5')
+        model.save_weights(log_dir + '/trained_weights_final.h5')
 
     # Further training if needed.
 

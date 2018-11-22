@@ -1,11 +1,12 @@
 import numpy as np
-
+from clize import run
 
 class YOLO_Kmeans:
 
-    def __init__(self, cluster_number, filename):
+    def __init__(self, cluster_number, filename, out):
         self.cluster_number = cluster_number
         self.filename = filename
+        self.out = out
 
     def iou(self, boxes, clusters):  # 1 box -> k clusters
         n = boxes.shape[0]
@@ -58,7 +59,7 @@ class YOLO_Kmeans:
         return clusters
 
     def result2txt(self, data):
-        f = open("yolo_anchors.txt", 'w')
+        f = open(self.out, 'w')
         row = np.shape(data)[0]
         for i in range(row):
             if i == 0:
@@ -94,8 +95,9 @@ class YOLO_Kmeans:
             self.avg_iou(all_boxes, result) * 100))
 
 
-if __name__ == "__main__":
-    cluster_number = 9
-    filename = "train.txt"
-    kmeans = YOLO_Kmeans(cluster_number, filename)
+def main(*, filename='train.txt', cluster_number=9, out='yolo_anchors.txt'):
+    kmeans = YOLO_Kmeans(cluster_number, filename, out)
     kmeans.txt2clusters()
+
+if __name__ == "__main__":
+    run(main)    
